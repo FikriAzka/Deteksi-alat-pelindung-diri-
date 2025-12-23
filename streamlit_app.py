@@ -32,7 +32,7 @@ if uploaded_file is not None:
         results = model(img)[0]
         st.image(results.plot(), caption="Hasil Deteksi", use_container_width=True)
 
-       # -------- VIDEO --------
+    # -------- VIDEO --------
     else:
         cap = cv2.VideoCapture(temp_path)
 
@@ -82,6 +82,7 @@ if uploaded_file is not None:
 
         st.success("✅ Video siap diputar")
         st.video(out_path)
+
 
 
 
