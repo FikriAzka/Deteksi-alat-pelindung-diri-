@@ -41,8 +41,8 @@ if uploaded_file is not None:
 
         width, height = 640, 480
 
-        out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".avi").name
-        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
         st.info("⏳ Memproses video...")
@@ -82,6 +82,7 @@ if uploaded_file is not None:
 
         st.success("✅ Video siap diputar")
         st.video(out_path)
+
 
 
 
