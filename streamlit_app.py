@@ -31,24 +31,24 @@ if uploaded_file is not None:
         results = model(img)[0]
         st.image(results.plot(), caption="Hasil Deteksi", use_container_width=True)
 
-        # -------- VIDEO --------
+    # -------- VIDEO --------
     else:
         cap = cv2.VideoCapture(temp_path)
 
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps if fps > 0 else 25
 
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        target_width = 640
+        target_height = 480
 
-        out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+        out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".avi").name
+        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        out = cv2.VideoWriter(out_path, fourcc, fps, (target_width, target_height))
 
-        st.info("⏳ Memproses video, mohon tunggu...")
+        st.info("⏳ Memproses video...")
         progress = st.progress(0)
 
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_count = 0
 
         while cap.isOpened():
@@ -56,14 +56,14 @@ if uploaded_file is not None:
             if not ret:
                 break
 
-            # 🔥 RESIZE supaya cepat
-            frame = cv2.resize(frame, (640, int(640 * height / width)))
+            # 🔥 resize FIXED
+            frame = cv2.resize(frame, (target_width, target_height))
 
             results = model(frame, conf=0.4, verbose=False)[0]
             annotated = results.plot()
 
-            # resize balik biar ukuran video konsisten
-            annotated = cv2.resize(annotated, (width, height))
+            # ⚠️ WAJIB ukuran sama
+            annotated = cv2.resize(annotated, (target_width, target_height))
             out.write(annotated)
 
             frame_count += 1
@@ -73,7 +73,8 @@ if uploaded_file is not None:
         out.release()
         progress.empty()
 
-        st.success("✅ Video selesai diproses")
+        st.success("✅ Video siap diputar")
         st.video(out_path)
+
 
 
