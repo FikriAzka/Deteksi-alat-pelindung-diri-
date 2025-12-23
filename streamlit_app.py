@@ -33,21 +33,27 @@ if uploaded_file is not None:
         results = model(img)[0]
         st.image(results.plot(), caption="Hasil Deteksi", use_container_width=True)
 
+    # ... (bagian upload dan image di atas tetap sama) ...
+
     # -------- VIDEO --------
     else:
         cap = cv2.VideoCapture(temp_path)
+
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps if fps > 0 else 25
-        width, height = 640, 480
+
+        # --- UBAH DISINI: AMBIL UKURAN ASLI VIDEO ---
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        # Simpan file sementara hasil OpenCV (mentah)
+        # Simpan file sementara hasil OpenCV
         tfile_output = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
         output_path_raw = tfile_output.name
 
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path_raw, fourcc, fps, (width, height))
 
-        st.info("⏳ Memproses video...")
+        st.info(f"⏳ Memproses video ({width}x{height})...") # Info resolusi
         progress = st.progress(0)
         
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -58,18 +64,23 @@ if uploaded_file is not None:
             if not ret:
                 break
 
-            frame = cv2.resize(frame, (width, height))
+            # Lakukan deteksi pada frame asli
             results = model(frame, conf=0.4, verbose=False)[0]
 
-            # Menggambar Box
+            # Menggambar Box (Koordinat otomatis menyesuaikan ukuran asli)
             for box in results.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 cls = int(box.cls[0])
                 conf = box.conf[0]
                 label = f"{model.names[cls]} {conf:.2f}"
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
-                cv2.putText(frame, label, (x1, y1-5),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
+                
+                # Tips: Jika resolusi tinggi, tebalkan garis (thickness) biar kelihatan
+                thickness = 2 if width < 1000 else 4 
+                font_scale = 0.5 if width < 1000 else 1.0
+
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), thickness)
+                cv2.putText(frame, label, (x1, y1-10),
+                            cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0,255,0), thickness)
 
             out.write(frame)
             frame_count += 1
@@ -80,15 +91,16 @@ if uploaded_file is not None:
         out.release()
         progress.empty()
 
-        # --- BAGIAN BARU: KONVERSI KE H.264 AGAR BISA DIPUTAR BROWSER ---
+        # --- KONVERSI FFmpeg (Wajib agar bisa diputar di web) ---
         output_path_fixed = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+        st.write("🔄 Melakukan encoding video...")
         
-        # Perintah FFmpeg untuk konversi ulang encoding
-        st.write("🔄 Melakukan encoding video agar kompatibel...")
+        # Note: Proses ini mungkin sedikit lebih lama jika resolusi video besar
+        import os
         os.system(f"ffmpeg -i {output_path_raw} -vcodec libx264 {output_path_fixed} -y")
 
         st.success("✅ Video siap diputar")
-        st.video(output_path_fixed) 
+        st.video(output_path_fixed)
 
 
 
