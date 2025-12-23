@@ -31,27 +31,49 @@ if uploaded_file is not None:
         results = model(img)[0]
         st.image(results.plot(), caption="Hasil Deteksi", use_container_width=True)
 
-    # -------- VIDEO --------
+        # -------- VIDEO --------
     else:
         cap = cv2.VideoCapture(temp_path)
+
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS) or 25
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = fps if fps > 0 else 25
+
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
-        st.info("⏳ Memproses video...")
+        st.info("⏳ Memproses video, mohon tunggu...")
+        progress = st.progress(0)
 
-        while True:
+        frame_count = 0
+
+        while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            results = model(frame)[0]
-            out.write(results.plot())
+
+            # 🔥 RESIZE supaya cepat
+            frame = cv2.resize(frame, (640, int(640 * height / width)))
+
+            results = model(frame, conf=0.4, verbose=False)[0]
+            annotated = results.plot()
+
+            # resize balik biar ukuran video konsisten
+            annotated = cv2.resize(annotated, (width, height))
+            out.write(annotated)
+
+            frame_count += 1
+            progress.progress(min(frame_count / total_frames, 1.0))
 
         cap.release()
         out.release()
+        progress.empty()
 
+        st.success("✅ Video selesai diproses")
         st.video(out_path)
+
+
