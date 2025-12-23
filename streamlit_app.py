@@ -1,7 +1,8 @@
 import streamlit as st
-import cv2
 import tempfile
 from ultralytics import YOLO
+import cv2
+st.write("OpenCV OK:", cv2.__version__)
 
 st.set_page_config(page_title="Deteksi APD", layout="centered")
 
@@ -81,6 +82,7 @@ if uploaded_file is not None:
 
         st.success("✅ Video siap diputar")
         st.video(out_path)
+
 
 
 
