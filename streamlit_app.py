@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import tempfile
 from ultralytics import YOLO
@@ -35,19 +36,20 @@ if uploaded_file is not None:
     # -------- VIDEO --------
     else:
         cap = cv2.VideoCapture(temp_path)
-
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps if fps > 0 else 25
-
         width, height = 640, 480
+        
+        # Simpan file sementara hasil OpenCV (mentah)
+        tfile_output = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        output_path_raw = tfile_output.name
 
-        out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+        out = cv2.VideoWriter(output_path_raw, fourcc, fps, (width, height))
 
         st.info("⏳ Memproses video...")
         progress = st.progress(0)
-
+        
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_count = 0
 
@@ -57,31 +59,37 @@ if uploaded_file is not None:
                 break
 
             frame = cv2.resize(frame, (width, height))
-
             results = model(frame, conf=0.4, verbose=False)[0]
 
-            # 🔥 DRAW MANUAL (STABIL)
+            # Menggambar Box
             for box in results.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 cls = int(box.cls[0])
                 conf = box.conf[0]
-
                 label = f"{model.names[cls]} {conf:.2f}"
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
                 cv2.putText(frame, label, (x1, y1-5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
 
             out.write(frame)
-
             frame_count += 1
-            progress.progress(min(frame_count / total_frames, 1.0))
+            if total_frames > 0:
+                progress.progress(min(frame_count / total_frames, 1.0))
 
         cap.release()
         out.release()
         progress.empty()
 
+        # --- BAGIAN BARU: KONVERSI KE H.264 AGAR BISA DIPUTAR BROWSER ---
+        output_path_fixed = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+        
+        # Perintah FFmpeg untuk konversi ulang encoding
+        st.write("🔄 Melakukan encoding video agar kompatibel...")
+        os.system(f"ffmpeg -i {output_path_raw} -vcodec libx264 {output_path_fixed} -y")
+
         st.success("✅ Video siap diputar")
-        st.video(out_path)
+        st.video(output_path_fixed) 
+
 
 
 
