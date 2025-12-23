@@ -59,30 +59,21 @@ if uploaded_file is not None:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_count = 0
 
-        while cap.isOpened():
+       while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # Lakukan deteksi pada frame asli
+            # 1. Deteksi (Tanpa resize, sesuai request sebelumnya)
             results = model(frame, conf=0.4, verbose=False)[0]
 
-            # Menggambar Box (Koordinat otomatis menyesuaikan ukuran asli)
-            for box in results.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                cls = int(box.cls[0])
-                conf = box.conf[0]
-                label = f"{model.names[cls]} {conf:.2f}"
-                
-                # Tips: Jika resolusi tinggi, tebalkan garis (thickness) biar kelihatan
-                thickness = 2 if width < 1000 else 4 
-                font_scale = 0.5 if width < 1000 else 1.0
+            # 2. GAMBAR OTOMATIS (Ini pengganti loop manual tadi)
+            # .plot() akan mengembalikan frame baru yang sudah ada kotak-kotaknya
+            annotated_frame = results.plot() 
 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), thickness)
-                cv2.putText(frame, label, (x1, y1-10),
-                            cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0,255,0), thickness)
+            # 3. Simpan ke video
+            out.write(annotated_frame) 
 
-            out.write(frame)
             frame_count += 1
             if total_frames > 0:
                 progress.progress(min(frame_count / total_frames, 1.0))
@@ -101,6 +92,7 @@ if uploaded_file is not None:
 
         st.success("✅ Video siap diputar")
         st.video(output_path_fixed)
+
 
 
 
