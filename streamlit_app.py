@@ -31,19 +31,18 @@ if uploaded_file is not None:
         results = model(img)[0]
         st.image(results.plot(), caption="Hasil Deteksi", use_container_width=True)
 
-    # -------- VIDEO --------
+       # -------- VIDEO --------
     else:
         cap = cv2.VideoCapture(temp_path)
 
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps if fps > 0 else 25
 
-        target_width = 640
-        target_height = 480
+        width, height = 640, 480
 
         out_path = tempfile.NamedTemporaryFile(delete=False, suffix=".avi").name
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-        out = cv2.VideoWriter(out_path, fourcc, fps, (target_width, target_height))
+        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
         st.info("⏳ Memproses video...")
         progress = st.progress(0)
@@ -56,15 +55,22 @@ if uploaded_file is not None:
             if not ret:
                 break
 
-            # 🔥 resize FIXED
-            frame = cv2.resize(frame, (target_width, target_height))
+            frame = cv2.resize(frame, (width, height))
 
             results = model(frame, conf=0.4, verbose=False)[0]
-            annotated = results.plot()
 
-            # ⚠️ WAJIB ukuran sama
-            annotated = cv2.resize(annotated, (target_width, target_height))
-            out.write(annotated)
+            # 🔥 DRAW MANUAL (STABIL)
+            for box in results.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                cls = int(box.cls[0])
+                conf = box.conf[0]
+
+                label = f"{model.names[cls]} {conf:.2f}"
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
+                cv2.putText(frame, label, (x1, y1-5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
+
+            out.write(frame)
 
             frame_count += 1
             progress.progress(min(frame_count / total_frames, 1.0))
@@ -75,6 +81,7 @@ if uploaded_file is not None:
 
         st.success("✅ Video siap diputar")
         st.video(out_path)
+
 
 
 
