@@ -3,7 +3,6 @@ import streamlit as st
 import tempfile
 from ultralytics import YOLO
 import cv2
-st.write("OpenCV OK:", cv2.__version__)
 
 st.set_page_config(page_title="Deteksi APD", layout="centered")
 
@@ -33,8 +32,6 @@ if uploaded_file is not None:
         results = model(img)[0]
         st.image(results.plot(), caption="Hasil Deteksi", use_container_width=True)
 
-    # ... (bagian upload dan image di atas tetap sama) ...
-
     # -------- VIDEO --------
     else:        
         cap = cv2.VideoCapture(temp_path)
@@ -59,26 +56,20 @@ if uploaded_file is not None:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_count = 0
 
-        # === PERBAIKAN LOOP DAN INDENTASI ===
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # 1. Deteksi (Tanpa resize, ukuran asli)
             results = model(frame, conf=0.4, verbose=False)[0]
 
-            # 2. GAMBAR OTOMATIS (Tanpa coding manual box)
-            # .plot() otomatis menggambar bounding box di frame
             annotated_frame = results.plot()
 
-            # 3. Simpan frame yang sudah ada gambarnya ke video
             out.write(annotated_frame)
 
             frame_count += 1
             if total_frames > 0:
                 progress.progress(min(frame_count / total_frames, 1.0))
-        # ====================================
 
         cap.release()
         out.release()
@@ -88,11 +79,11 @@ if uploaded_file is not None:
         output_path_fixed = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
         st.write("🔄 Melakukan encoding video...")
         
-        # Perintah konversi agar kompatibel dengan browser
         os.system(f"ffmpeg -i {output_path_raw} -vcodec libx264 {output_path_fixed} -y")
 
         st.success("✅ Video siap diputar")
         st.video(output_path_fixed)
+
 
 
 
