@@ -36,13 +36,13 @@ if uploaded_file is not None:
     # ... (bagian upload dan image di atas tetap sama) ...
 
     # -------- VIDEO --------
-    else:
+    else:        
         cap = cv2.VideoCapture(temp_path)
 
         fps = cap.get(cv2.CAP_PROP_FPS)
         fps = fps if fps > 0 else 25
 
-        # --- UBAH DISINI: AMBIL UKURAN ASLI VIDEO ---
+        # Ambil ukuran asli video
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
@@ -53,30 +53,32 @@ if uploaded_file is not None:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path_raw, fourcc, fps, (width, height))
 
-        st.info(f"⏳ Memproses video ({width}x{height})...") # Info resolusi
+        st.info(f"⏳ Memproses video ({width}x{height})...")
         progress = st.progress(0)
         
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_count = 0
 
-       while cap.isOpened():
+        # === PERBAIKAN LOOP DAN INDENTASI ===
+        while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # 1. Deteksi (Tanpa resize, sesuai request sebelumnya)
+            # 1. Deteksi (Tanpa resize, ukuran asli)
             results = model(frame, conf=0.4, verbose=False)[0]
 
-            # 2. GAMBAR OTOMATIS (Ini pengganti loop manual tadi)
-            # .plot() akan mengembalikan frame baru yang sudah ada kotak-kotaknya
-            annotated_frame = results.plot() 
+            # 2. GAMBAR OTOMATIS (Tanpa coding manual box)
+            # .plot() otomatis menggambar bounding box di frame
+            annotated_frame = results.plot()
 
-            # 3. Simpan ke video
-            out.write(annotated_frame) 
+            # 3. Simpan frame yang sudah ada gambarnya ke video
+            out.write(annotated_frame)
 
             frame_count += 1
             if total_frames > 0:
                 progress.progress(min(frame_count / total_frames, 1.0))
+        # ====================================
 
         cap.release()
         out.release()
@@ -86,12 +88,12 @@ if uploaded_file is not None:
         output_path_fixed = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
         st.write("🔄 Melakukan encoding video...")
         
-        # Note: Proses ini mungkin sedikit lebih lama jika resolusi video besar
-        import os
+        # Perintah konversi agar kompatibel dengan browser
         os.system(f"ffmpeg -i {output_path_raw} -vcodec libx264 {output_path_fixed} -y")
 
         st.success("✅ Video siap diputar")
         st.video(output_path_fixed)
+
 
 
 
